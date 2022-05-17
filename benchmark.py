@@ -3,14 +3,13 @@ from datasets import load_dataset
 from torchmetrics import BLEUScore
 import time
 import numpy as np
+import json
 
 def run_benchmarks():
-    generation_params = {
-        "max_new_tokens":100,
-        "temperature":0.7,
-        "do_sample":True,
-        "top_p":0.9,
-    }
+    # load generation params from json
+    generation_params = {}
+    with open("generation_config.json") as f:
+        generation_params = json.load(f)
 
     models = [
         "facebook/opt-125m",
