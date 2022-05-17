@@ -2,8 +2,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from flask import Flask, request
 app = Flask(__name__)
 
-tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
-model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m")
+tokenizer = AutoTokenizer.from_pretrained("facebook/opt-30b")
+model = AutoModelForCausalLM.from_pretrained("facebook/opt-30b")
 model.eval()
 
 @app.route('/', methods=['POST'])
