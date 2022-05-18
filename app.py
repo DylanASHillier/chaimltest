@@ -1,9 +1,11 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextGenerationPipeline
 from flask import Flask, request, json
+from optimum.onnxruntime import ORTModelForCausalLM
 app = Flask(__name__)
 
-tokenizer = AutoTokenizer.from_pretrained("facebook/opt-30b")
-model = AutoModelForCausalLM.from_pretrained("facebook/opt-30b")
+tokenizer = AutoTokenizer.from_pretrained("facebook/opt-1.3b")
+model = ORTModelForCausalLM.from_pretrained("opt-1.3bq.onnx")
+
 model.config.max_length=21
 
 pipeline = TextGenerationPipeline(model=model, tokenizer=tokenizer, device=-1)
