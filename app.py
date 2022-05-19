@@ -3,9 +3,9 @@ from flask import Flask, request, json
 from optimum.onnxruntime import ORTModelForCausalLM
 app = Flask(__name__)
 
-tokenizer = AutoTokenizer.from_pretrained("facebook/opt-1.3b")
-model = ORTModelForCausalLM.from_pretrained("opt-1.3bq.onnx")
-
+tokenizer = AutoTokenizer.from_pretrained("facebook/opt-13b")
+# model = ORTModelForCausalLM.from_pretrained("./",file_name="opt-13bq.onnx")
+model = AutoModelForCausalLM.from_pretrained("facebook/opt-13b")
 model.config.max_length=21
 
 pipeline = TextGenerationPipeline(model=model, tokenizer=tokenizer, device=-1)

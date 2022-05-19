@@ -1,28 +1,14 @@
 from transformers.onnx import OnnxConfigWithPast, export, validate_model_outputs
 from pathlib import Path
 from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM
-from typing import Mapping, OrderedDict
 import onnx
 import torch
-from optimum.onnxruntime import ORTConfig, ORTQuantizer
-from optimum.onnxruntime.configuration import AutoQuantizationConfig
+from optimum.onnxruntime import ORTConfig, ORTQuantizer, ORTOptimizer
+from optimum.onnxruntime.configuration import AutoQuantizationConfig, OptimizationConfig
 import argparse
+from onnx_config import OPTOnnxConfig
 
-
-class OPTOnnxConfig(OnnxConfigWithPast):
-    @property
-    def inputs(self) -> Mapping[str, Mapping[int,str]]:
-        common_inputs = OrderedDict(
-            [
-                ("input_ids", OrderedDict([(0, "input_ids")])),
-                ("attention_mask", OrderedDict([(0, "attention_mask")])),
-            ]
-        )
-        if self.use_past:
-            for i in range(self.num_layers[0]):
-                common_inputs[f"past_key_values.{i}.key"]= OrderedDict([(0,"batch"),(2,"past_sequence + sequence")])
-                common_inputs[f"past_key_values.{i}.value"]= OrderedDict([(0,"batch"),(2,"past_sequence + sequence")])
-        return common_inputs
+model_folder = "quantized_models"
 
 def get_opt_config(model_name) -> OPTOnnxConfig:
     return OPTOnnxConfig(AutoConfig.from_pretrained(model_name), task="causal-lm")
@@ -32,7 +18,8 @@ def export_onxx(model_name, output_path):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name)
     config = get_opt_config(model_name)
-    return export(tokenizer, model, config, config.default_onnx_opset, Path(output_path))
+    return export(tokenizer, model, config, config.default_onnx_opset,
+        Path(model_folder+"/"+output_path))
 
 def quantize_from_hub(model_name):
     '''
@@ -59,17 +46,36 @@ def quantize(model_name,onnx_path,output_path):
     quantizer.tokenizer = tokenizer
 
     # quantizer.fit(model_name, output_dir=".", feature="causal-lm")
-    quantizer.export(Path(onnx_path), Path(output_path), qconfig, use_external_data_format=True)
+    quantizer.export(Path(model_folder + "/" + onnx_path), Path(model_folder + "/" + output_path), qconfig)
 
-def validate_model(onnx_config, onnx_outputs, model_name, onnx_filename):
+def optimize(model_name, onnx_config, onnx_path, optimized_onnx_path):
+    oconfig = OptimizationConfig(optimization_level=99)
+    fake_name = "distilbert-base-uncased-finetuned-sst-2-english"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    optimizer = ORTOptimizer.from_pretrained(fake_name, feature="sequence-classification")
+    optimizer.feature = "causal-lm"
+    optimizer.model = model
+    optimizer.tokenizer = tokenizer
+    optimizer._onnx_config = onnx_config
+    optimizer._model_type = 'opt'
+
+
+    optimizer.export(Path(model_folder + "/" + onnx_path),
+        Path(model_folder+ "/"+ optimized_onnx_path), oconfig)
+
+def validate_model(onnx_config, onnx_outputs, model_name, onnx_filename, tol=1e-3):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     base_model = AutoModelForCausalLM.from_pretrained(model_name)
     # onnx.checker.check_model(onnx.load(onnx_filename)) # doesn't work for overly large files...
-    validate_model_outputs(onnx_config, tokenizer, base_model, Path(onnx_filename), onnx_outputs, 1e-3)
+    validate_model_outputs(onnx_config, tokenizer, base_model,
+        Path(model_folder+ "/"+ onnx_filename), onnx_outputs, tol)
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--specific_model", default="opt-125m",help="Name of the model to export")
+    parser.add_argument("--quantize", action="store_true", default=False, help="Quantize the model")
+    parser.add_argument("--optimize", action="store_true", default=False, help="Optimize the model")
     return parser.parse_args()
 
 
@@ -77,11 +83,17 @@ if __name__ == '__main__':
     args = parse_args()
     specific_model = args.specific_model
     model_name = f"facebook/{specific_model}"
-    onnx_name = f"{specific_model}.onnx"
-    qonnx_name = f"{specific_model}q.onnx"
+    curr_onnx_name = f"{specific_model}.onnx"
     config = get_opt_config(model_name)
-    onnx_inputs, onnx_outputs = export_onxx(model_name, onnx_name)
-    validate_model(config, onnx_outputs, model_name, onnx_name)
-    quantize(model_name,onnx_name,qonnx_name)
-    validate_model(config, onnx_outputs, model_name, qonnx_name)
+    onnx_inputs, onnx_outputs = export_onxx(model_name, curr_onnx_name)
+    validate_model(config, onnx_outputs, model_name, curr_onnx_name)
+    if args.quantize:
+        qonnx_name = "q"+curr_onnx_name
+        quantize(model_name,curr_onnx_name,qonnx_name)
+        validate_model(config, onnx_outputs, model_name, qonnx_name, tol=10)
+        curr_onnx_name = qonnx_name
+    if args.optimize:
+        oonnx_name = "o"+curr_onnx_name
+        optimize(model_name, config, curr_onnx_name,oonnx_name)
+        validate_model(config, onnx_outputs, model_name, oonnx_name, tol=10)
     # quantize_from_hub("facebook/opt-125m")

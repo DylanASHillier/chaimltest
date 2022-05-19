@@ -1,5 +1,6 @@
 torch
-transformers
+transformers[onnx]
 flask
 datasets
 torchmetrics
+optimum
