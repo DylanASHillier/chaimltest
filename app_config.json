@@ -1,0 +1,7 @@
+{
+    "app_params":
+    {
+        "optimization_level":"fusion",
+        "opt_version":"13b"
+    }
+}

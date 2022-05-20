@@ -2,21 +2,31 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, TextGenerationPipe
 from flask import Flask, request, json
 from optimum.onnxruntime import ORTModelForCausalLM
 
-
 app = Flask(__name__)
+app_params = {}
+open("app_config.json") as f:
+    app_params = json.load(f)
+app_params=generation_params["app_params"]
+version = app_params["opt_version"]
 
-version = "125m"
+model_type = app_params["optimization_level"]
+if model_type == 'baseline':
+    model = AutoModelForCausalLM.from_pretrained(f"facebook/opt-{version}")
+elif model_type == 'onnx':
+    model = ORTModelForCausalLM.from_pretrained(version,file_name=f"opt-{version}.onnx")
+elif model_type == 'onnxruntime':
+    model = ORTModelForCausalLM.from_pretrained(version,file_name=f"oopt-{version}.onnx")
+elif model_type == 'fusion':
+    model = ORTModelForCausalLM.from_pretrained(version,file_name=f"foopt-{version}.onnx")
+elif model_type == 'quantized':
+    model = ORTModelForCausalLM.from_pretrained(version,file_name=f"qoopt-{version}.onnx")
 tokenizer = AutoTokenizer.from_pretrained(f"facebook/opt-{version}")
-model = ORTModelForCausalLM.from_pretrained(version,file_name=f"foopt-{version}.onnx")
-# model = AutoModelForCausalLM.from_pretrained("facebook/opt-13b")
-model.config.max_length=21
-
 pipeline = TextGenerationPipeline(model=model, tokenizer=tokenizer, device=-1)
 
 generation_params = {}
-# with open("generation_config.json") as f:
-#     generation_params = json.load(f)
-# generation_params=generation_params["generation_params"]
+with open("generation_config.json") as f:
+    generation_params = json.load(f)
+generation_params=generation_params["generation_params"]
 
 @app.route('/', methods=['POST'])
 def infer():
