@@ -38,14 +38,14 @@ def run_benchmarks(opt_version):
     inference_params = {
         "generation_params": generation_params,
     }
-    num_samples = 10
+    num_samples = 3
     for model_string in onnx_model_strings:
         model = ORTModelForCausalLM.from_pretrained(
             opt_version, file_name=model_string)
         inference_params["pipeline"] = TextGenerationPipeline(
             model=model, tokenizer=tokenizer, device=-1)
         print(f"evaluating {model_string}")
-        run_eval(pipeline, dataset, num_samples)
+        run_eval(inference_params, dataset, num_samples)
     model = AutoModelForCausalLM.from_pretrained(model_name)
     pipeline = TextGenerationPipeline(
         model=model, tokenizer=tokenizer, device=-1)
@@ -53,10 +53,10 @@ def run_benchmarks(opt_version):
     run_eval(inference_params, dataset, num_samples)
 
 
-@profile
 def run_inference(inference_params):
     pipeline = inference_params["pipeline"]
-    return pipeline(inference_params["question"], return_full_text=False, generation_kwargs=inference_params["generation_params"])
+    output = pipeline(inference_params["prefix"], return_full_text=False, generation_kwargs=inference_params["generation_params"])
+    return output[0]["generated_text"]
 
 
 def update_metrics(inference_params, metrics, target):
@@ -64,7 +64,7 @@ def update_metrics(inference_params, metrics, target):
     answer = run_inference(inference_params)
     end = time.time()
     metrics["time_metric"] += end-start
-    metrics["bleu_metric"].update([answer], [[target]])
+    metrics["bleu_metric"]([answer], [[target]])
 
 
 def report_metrics(metrics):
@@ -80,6 +80,7 @@ def get_prefix_target(dataset, i):
     return dataset[i][:split_idx], dataset[i][split_idx:length]
 
 
+@profile
 def run_eval(inference_params, dataset, num_samples):
     metrics = {
         "bleu_metric": BLEUScore(),
