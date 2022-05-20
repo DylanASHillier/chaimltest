@@ -68,16 +68,3 @@ class OPTOnnxConfig(OnnxConfigWithPast):
     @property
     def default_onnx_opset(self) -> int:
         return 13
-    # @property
-    # def inputs(self) -> Mapping[str, Mapping[int,str]]:
-    #     common_inputs = OrderedDict(
-    #         [
-    #             ("input_ids", OrderedDict([(0, "batch"),(1,"sequence")])),
-    #             ("attention_mask", OrderedDict([(0, "attention_mask")])),
-    #         ]
-    #     )
-    #     if self.use_past:
-    #         for i in range(self.num_layers[0]):
-    #             common_inputs[f"past_key_values.{i}.key"]= OrderedDict([(0,"batch"),(2,"past_sequence + sequence")])
-    #             common_inputs[f"past_key_values.{i}.value"]= OrderedDict([(0,"batch"),(2,"past_sequence + sequence")])
-    #     return common_inputs
