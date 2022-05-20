@@ -23,11 +23,12 @@ def load_generation_params():
     return generation_params
 
 
-def run_benchmarks(opt_version):
+def run_benchmarks(opt_version, num_samples=10):
     '''
     runs time benchmarks on the various different versions of a model
     arguments:
         version: string in "125m", "350m", "1.3b", "2.7b", "6.7b", "13b", "30b"
+        num_samples: number of samples over which to run the benchmarks
     assumes that this also the name of the folder where the models are stored.
     '''
     generation_params = load_generation_params()
@@ -38,7 +39,6 @@ def run_benchmarks(opt_version):
     inference_params = {
         "generation_params": generation_params,
     }
-    num_samples = 3
     for model_string in onnx_model_strings:
         model = ORTModelForCausalLM.from_pretrained(
             opt_version, file_name=model_string)
@@ -100,9 +100,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_version", default="125m",
                         help="Name of the opt model version -- i.e. one of 125m, 30b etc.")
+    parser.add_argument("--num_samples", default=10, type=int, 
+                        help="Number of samples to evaluate over")
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = parse_args()
-    run_benchmarks(args.model_version)
+    run_benchmarks(args.model_version, args.num_samples)
