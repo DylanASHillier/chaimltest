@@ -2,6 +2,8 @@ from transformers.onnx import OnnxConfigWithPast
 from transformers import PreTrainedTokenizer, TensorType
 from typing import Mapping, OrderedDict, Optional, Any
 
+### Mostly just copied from the gpt-j config
+
 class OPTOnnxConfig(OnnxConfigWithPast):
     @property
     def inputs(self) -> Mapping[str, Mapping[int, str]]:
@@ -16,7 +18,7 @@ class OPTOnnxConfig(OnnxConfigWithPast):
 
     @property
     def num_attention_heads(self) -> int:
-        return self._config.num_heads
+        return self._config.num_attention_heads
 
     def generate_dummy_inputs(
         self,
