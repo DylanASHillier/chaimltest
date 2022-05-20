@@ -47,7 +47,7 @@ def run_benchmarks(opt_version):
         print(f"evaluating {model_string}")
         run_eval(inference_params, dataset, num_samples)
     model = AutoModelForCausalLM.from_pretrained(model_name)
-    pipeline = TextGenerationPipeline(
+    inference_params["pipeline"]=TextGenerationPipeline(
         model=model, tokenizer=tokenizer, device=-1)
     print(f"evaluating baseline")
     run_eval(inference_params, dataset, num_samples)
