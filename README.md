@@ -19,3 +19,6 @@ Again for 13b you can run
 
 ### Inference as a Flask App/ over docker instance
 Not yet properly implemented...
+
+### Important
+Additionally had to change one line in optimum/onnxruntime namely adding DisableShapeInference to the extra options
