@@ -1,11 +1,14 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextGenerationPipeline
 from flask import Flask, request, json
 from optimum.onnxruntime import ORTModelForCausalLM
+
+
 app = Flask(__name__)
 
-tokenizer = AutoTokenizer.from_pretrained("facebook/opt-13b")
-# model = ORTModelForCausalLM.from_pretrained("./",file_name="opt-13bq.onnx")
-model = AutoModelForCausalLM.from_pretrained("facebook/opt-13b")
+version = "125m"
+tokenizer = AutoTokenizer.from_pretrained(f"facebook/opt-{version}")
+model = ORTModelForCausalLM.from_pretrained(version,file_name=f"foopt-{version}.onnx")
+# model = AutoModelForCausalLM.from_pretrained("facebook/opt-13b")
 model.config.max_length=21
 
 pipeline = TextGenerationPipeline(model=model, tokenizer=tokenizer, device=-1)
@@ -24,7 +27,7 @@ def infer():
     out = pipeline(
         text, 
         return_full_text=False,
-        **generation_params
+        generation_kwargs=generation_params
     )
     out = out[0]["generated_text"]
     return out
@@ -35,7 +38,7 @@ if __name__=='__main__':
         out = pipeline(
             text, 
             return_full_text=False,
-            **generation_params
+            generation_kwargs=generation_params
         )
         out = out[0]["generated_text"]
         print(out)
