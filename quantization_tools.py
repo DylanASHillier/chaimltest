@@ -9,8 +9,6 @@ import argparse
 from onnx_config import OPTOnnxConfig
 from optimization_custom import optimize
 
-model_folder = "../13b"
-
 def get_opt_config(model_name) -> OPTOnnxConfig:
     return OPTOnnxConfig(AutoConfig.from_pretrained(model_name), task="causal-lm")
 
@@ -20,7 +18,7 @@ def export_onnx(model_name, output_path):
     model = AutoModelForCausalLM.from_pretrained(model_name)
     config = get_opt_config(model_name)
     return export(tokenizer, model, config, config.default_onnx_opset,
-        Path(model_folder+"/"+output_path))
+        Path(output_path))
 
 def quantize_from_hub(model_name):
     '''
@@ -28,13 +26,7 @@ def quantize_from_hub(model_name):
     '''
     qconfig = AutoQuantizationConfig.arm64(is_static=False, per_channel=False)
     quantizer = ORTQuantizer.from_pretrained(model_name, feature="causal-lm")
-    # Quantize the model!
     quantizer.fit(model_name, output_dir=".", feature="causal-lm")
-    # quantizer = ORTQuantizer(
-    #     onnx_model_path="model.onnx",
-    #     onnx_quantized_model_output_path="model-quantized.onnx",
-    #     quantization_config=qconfig,
-    # )
 
 def quantize(model_name,onnx_path,output_path):
     qconfig = AutoQuantizationConfig.avx2(is_static=False, per_channel=False)
@@ -45,32 +37,13 @@ def quantize(model_name,onnx_path,output_path):
     quantizer.feature = "causal-lm"
     quantizer.model = model
     quantizer.tokenizer = tokenizer
-
-    # quantizer.fit(model_name, output_dir=".", feature="causal-lm")
-    quantizer.export(Path( onnx_path), Path( output_path), qconfig, use_external_data_format=True)
-
-# def optimize(model_name, onnx_config, onnx_path, optimized_onnx_path):
-#     oconfig = OptimizationConfig(optimization_level=99)
-#     fake_name = "distilbert-base-uncased-finetuned-sst-2-english"
-#     tokenizer = AutoTokenizer.from_pretrained(model_name)
-#     model = AutoModelForCausalLM.from_pretrained(model_name)
-#     optimizer = ORTOptimizer.from_pretrained(fake_name, feature="sequence-classification")
-#     optimizer.feature = "causal-lm"
-#     optimizer.model = model
-#     optimizer.tokenizer = tokenizer
-#     optimizer._onnx_config = onnx_config
-#     optimizer._model_type = 'gptj'
-
-
-#     optimizer.export(Path(model_folder + "/" + onnx_path),
-#         Path(model_folder+ "/"+ optimized_onnx_path), oconfig)
+    quantizer.export(Path(onnx_path), Path(output_path), qconfig, use_external_data_format=True)
 
 def validate_model(onnx_config, onnx_outputs, model_name, onnx_filename, tol=1e-3):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     base_model = AutoModelForCausalLM.from_pretrained(model_name)
-    # onnx.checker.check_model(onnx.load(onnx_filename)) # doesn't work for overly large files...
     validate_model_outputs(onnx_config, tokenizer, base_model,
-        Path(model_folder+ "/"+ onnx_filename), onnx_outputs, tol)
+        Path(onnx_filename), onnx_outputs, tol)
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -87,7 +60,7 @@ if __name__ == '__main__':
     curr_onnx_name = f"{specific_model}.onnx"
     config = get_opt_config(model_name)
     onnx_inputs, onnx_outputs = export_onnx(model_name, curr_onnx_name)
-    # validate_model(config, onnx_outputs, model_name, curr_onnx_name)
+    validate_model(config, onnx_outputs, model_name, curr_onnx_name)
     if args.optimize:
         print("optimizing")
         oonnx_name = "o"+curr_onnx_name
@@ -101,5 +74,3 @@ if __name__ == '__main__':
         quantize(model_name, curr_onnx_name, qonnx_name)
         # validate_model(config, onnx_outputs, model_name, qonnx_name, tol=10)
         curr_onnx_name = qonnx_name
-
-    # quantize_from_hub("facebook/opt-125m")

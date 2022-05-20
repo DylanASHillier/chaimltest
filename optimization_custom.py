@@ -12,7 +12,6 @@ from onnxruntime.transformers.onnx_model_gpt2 import Gpt2OnnxModel
 from onnxruntime.transformers.fusion_options import FusionOptions
 
 ## adapted from onnxruntime.transformers.optimizer
-## Fusion not implemented
 
 def optimize_by_onnxruntime(onnx_model_path, optimized_model_path, disabled_optimizers=[]):
     sess_options = onnxruntime.SessionOptions()
