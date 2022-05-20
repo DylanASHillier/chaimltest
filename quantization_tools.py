@@ -7,13 +7,14 @@ from optimum.onnxruntime import ORTConfig, ORTQuantizer, ORTOptimizer
 from optimum.onnxruntime.configuration import AutoQuantizationConfig, OptimizationConfig
 import argparse
 from onnx_config import OPTOnnxConfig
+from optimization_custom import optimize
 
-model_folder = "quantized_models"
+model_folder = "../13b"
 
 def get_opt_config(model_name) -> OPTOnnxConfig:
     return OPTOnnxConfig(AutoConfig.from_pretrained(model_name), task="causal-lm")
 
-def export_onxx(model_name, output_path):
+def export_onnx(model_name, output_path):
     config = get_opt_config(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name)
@@ -46,23 +47,23 @@ def quantize(model_name,onnx_path,output_path):
     quantizer.tokenizer = tokenizer
 
     # quantizer.fit(model_name, output_dir=".", feature="causal-lm")
-    quantizer.export(Path(model_folder + "/" + onnx_path), Path(model_folder + "/" + output_path), qconfig)
+    quantizer.export(Path( onnx_path), Path( output_path), qconfig, use_external_data_format=True)
 
-def optimize(model_name, onnx_config, onnx_path, optimized_onnx_path):
-    oconfig = OptimizationConfig(optimization_level=99)
-    fake_name = "distilbert-base-uncased-finetuned-sst-2-english"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    optimizer = ORTOptimizer.from_pretrained(fake_name, feature="sequence-classification")
-    optimizer.feature = "causal-lm"
-    optimizer.model = model
-    optimizer.tokenizer = tokenizer
-    optimizer._onnx_config = onnx_config
-    optimizer._model_type = 'opt'
+# def optimize(model_name, onnx_config, onnx_path, optimized_onnx_path):
+#     oconfig = OptimizationConfig(optimization_level=99)
+#     fake_name = "distilbert-base-uncased-finetuned-sst-2-english"
+#     tokenizer = AutoTokenizer.from_pretrained(model_name)
+#     model = AutoModelForCausalLM.from_pretrained(model_name)
+#     optimizer = ORTOptimizer.from_pretrained(fake_name, feature="sequence-classification")
+#     optimizer.feature = "causal-lm"
+#     optimizer.model = model
+#     optimizer.tokenizer = tokenizer
+#     optimizer._onnx_config = onnx_config
+#     optimizer._model_type = 'gptj'
 
 
-    optimizer.export(Path(model_folder + "/" + onnx_path),
-        Path(model_folder+ "/"+ optimized_onnx_path), oconfig)
+#     optimizer.export(Path(model_folder + "/" + onnx_path),
+#         Path(model_folder+ "/"+ optimized_onnx_path), oconfig)
 
 def validate_model(onnx_config, onnx_outputs, model_name, onnx_filename, tol=1e-3):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -85,15 +86,20 @@ if __name__ == '__main__':
     model_name = f"facebook/{specific_model}"
     curr_onnx_name = f"{specific_model}.onnx"
     config = get_opt_config(model_name)
-    onnx_inputs, onnx_outputs = export_onxx(model_name, curr_onnx_name)
-    validate_model(config, onnx_outputs, model_name, curr_onnx_name)
-    if args.quantize:
-        qonnx_name = "q"+curr_onnx_name
-        quantize(model_name,curr_onnx_name,qonnx_name)
-        validate_model(config, onnx_outputs, model_name, qonnx_name, tol=10)
-        curr_onnx_name = qonnx_name
+    onnx_inputs, onnx_outputs = export_onnx(model_name, curr_onnx_name)
+    # validate_model(config, onnx_outputs, model_name, curr_onnx_name)
     if args.optimize:
+        print("optimizing")
         oonnx_name = "o"+curr_onnx_name
-        optimize(model_name, config, curr_onnx_name,oonnx_name)
-        validate_model(config, onnx_outputs, model_name, oonnx_name, tol=10)
+        # optimize(model_name, config, curr_onnx_name,oonnx_name)
+        # optimize(curr_onnx_name,oonnx_name, config, AutoConfig.from_pretrained(model_name))
+        # validate_model(config, onnx_outputs, model_name, oonnx_name, tol=10)
+        curr_onnx_name = oonnx_name
+    if args.quantize:
+        print("quantizing")
+        qonnx_name = "q"+curr_onnx_name
+        quantize(model_name, curr_onnx_name, qonnx_name)
+        # validate_model(config, onnx_outputs, model_name, qonnx_name, tol=10)
+        curr_onnx_name = qonnx_name
+
     # quantize_from_hub("facebook/opt-125m")
