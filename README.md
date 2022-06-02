@@ -1,5 +1,6 @@
 ## OPT Inference
-Repo for coding challenge done for a job interview
+Repo for coding challenge done for a job interview.
+
 Involved doing inference on the new OPT models and trying to make the inference better/more efficient
 
 ### Model Generation
