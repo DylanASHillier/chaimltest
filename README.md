@@ -15,7 +15,7 @@ Again for 13b you can run
 1. `$ python3 benchmark.py --model_version=13b --num_samples=10`
 
 ### Inference with CLI
-1. Setup the app_config.json: optimization_level can be "baseline", "onnx", "onnxruntime", "fusion", or "quantized". opt_version varies over the different model versions: "125m", "250m", 
+1. Setup the app_config.json: optimization_level can be "baseline", "onnx", "onnxruntime", "fusion", or "quantized". opt_version varies over the different model versions: "125m", "250m", etc.
 1. `$ python3 app.py`
 
 ### Inference as a Flask App/ over docker instance
